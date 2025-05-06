@@ -3,8 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
+using Unity.Cinemachine;
 
-public class CarController : MonoBehaviour {
+public class CarController : NetworkBehaviour {
     private float _speed;
 
     public Action<float> OnSpeedChange;
@@ -16,7 +18,7 @@ public class CarController : MonoBehaviour {
 
     private float _delayTime=3.5f;
     private bool _isBraking;
-    private float _sideStiffness = 0.3f;
+    private float _sideStiffness = 0.2f;
 
     [SerializeField] private float _maxSteerAngle = 40f;
     [SerializeField] private float _brakeForce = 3000f;
@@ -34,6 +36,8 @@ public class CarController : MonoBehaviour {
     [SerializeField] private Transform _rearRightWheelMesh;
     [SerializeField] private Transform _rearLeftWheelMesh;
 
+    [SerializeField] private CinemachineCamera _thirdPersonFollowCam;
+
     private InputSystem_Actions _carController;
     private Rigidbody _rb;
     private InputAction _move;
@@ -47,9 +51,20 @@ public class CarController : MonoBehaviour {
         _carAudio = GetComponent<AudioController>();
     }
 
+    public override void OnNetworkSpawn() {
+        base.OnNetworkSpawn();
+        if (!IsOwner) return;
+        _thirdPersonFollowCam= GameObject.FindAnyObjectByType<CinemachineCamera>();
+        if(_thirdPersonFollowCam!= null) {
+            _thirdPersonFollowCam.Follow = transform;
+        }
+
+    }
     private void Start() {
         _carAudio.PlayeEnagineStartSound();
         _carAudio.PlayIdleWithDelay(_delayTime);
+        //_thirdPersonFollowCam.Follow = transform;
+
 
     }
     private void OnEnable() {
@@ -64,6 +79,7 @@ public class CarController : MonoBehaviour {
         _brake.Disable();
     }
     void FixedUpdate() {
+        if (!IsOwner) return;
         Move();
         CalculateSpeed();
     }
